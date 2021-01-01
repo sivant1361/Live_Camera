@@ -7,6 +7,8 @@ class Camera extends Component {
     super(props);
     this.state = {
       recording: false,
+      path: '',
+      data: {},
     };
   }
 
@@ -19,23 +21,33 @@ class Camera extends Component {
   };
 
   stopRecording = async () => {
-    this.camera.stopRecording().then(data=>{
-      console.log("Recording stopped!");
-      console.log(data);
-    });
+    console.log('Recording stopped');
+    console.log("end start:"+new Date());
+    this.camera.stopRecording();
+    console.log("end terminate:"+new Date());
     this.setState({recording: false});
   };
 
   takeVideo = async () => {
     if (this.camera) {
       this.setState({recording: true});
-      await this.camera.recordAsync({maxDuration: 120}).then((data) => {
-        console.log('video capture', data);
-      });
+      const options = {minDuration: 10};
+      console.log("record start:"+new Date());
+      const data = await this.camera.recordAsync(options);
+      console.log("record terminate:"+new Date());
+      // const data = await this.camera.recordAsync();
+      this.setState({path: data.uri});
+      this.setState({recording: false});
+      console.log('FILE', data);
     }
   };
 
   render() {
+    if (this.state.recording === true) {
+      setTimeout(() => {
+        this.stopRecording();
+      }, 15000);
+    }
     return (
       <View style={styles.container}>
         <RNCamera
@@ -68,21 +80,17 @@ class Camera extends Component {
             flexDirection: 'row',
             justifyContent: 'space-around',
           }}>
-          <TouchableOpacity
-            onPress={this.takePicture.bind(this)}
-            style={styles.capture}>
+          <TouchableOpacity onPress={this.takePicture} style={styles.capture}>
             <Text style={{fontSize: 14, color: 'white'}}> SNAP </Text>
           </TouchableOpacity>
           {this.state.recording ? (
             <TouchableOpacity
-              onPress={this.stopRecording.bind(this)}
+              onPress={this.stopRecording}
               style={styles.capture}>
               <Text style={{fontSize: 14, color: 'white'}}> Stop </Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity
-              onPress={this.takeVideo.bind(this)}
-              style={styles.capture}>
+            <TouchableOpacity onPress={this.takeVideo} style={styles.capture}>
               <Text style={{fontSize: 14, color: 'white'}}> Video </Text>
             </TouchableOpacity>
           )}
