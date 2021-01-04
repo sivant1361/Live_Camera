@@ -8,6 +8,10 @@ target 'livecam' do
 
   use_react_native!(:path => config["reactNativePath"])
 
+  pod 'react-native-ffmpeg', :path => '../node_modules/react-native-ffmpeg'
+
+  pod 'react-native-video-helper', :path => '../node_modules/react-native-video-helper'
+
   target 'livecamTests' do
     inherit! :complete
     # Pods for testing

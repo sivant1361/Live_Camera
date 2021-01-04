@@ -1,6 +1,8 @@
 import React, {Component} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {RNCamera} from 'react-native-camera';
+import {RNFFprobe} from 'react-native-ffmpeg';
+import RNVideoHelper from 'react-native-video-helper';
 
 class Camera extends Component {
   constructor(props) {
@@ -9,6 +11,8 @@ class Camera extends Component {
       recording: false,
       path: '',
       data: {},
+      duration: 3,
+      croppedURL:''
     };
   }
 
@@ -22,23 +26,53 @@ class Camera extends Component {
 
   stopRecording = async () => {
     console.log('Recording stopped');
-    console.log("end start:"+new Date());
-    this.camera.stopRecording();
-    console.log("end terminate:"+new Date());
-    this.setState({recording: false});
+    console.log('end start:' + new Date());
+    setTimeout(() => {
+      this.camera.stopRecording();
+    },1500)
+    console.log('end terminate:' + new Date());
+    // this.setState({recording: false});
   };
 
   takeVideo = async () => {
     if (this.camera) {
       this.setState({recording: true});
-      const options = {minDuration: 10};
-      console.log("record start:"+new Date());
+      const options = {minDuration: 120};
+      console.log('record start:' + new Date());
       const data = await this.camera.recordAsync(options);
-      console.log("record terminate:"+new Date());
+      console.log('record terminate:' + new Date());
       // const data = await this.camera.recordAsync();
       this.setState({path: data.uri});
-      this.setState({recording: false});
       console.log('FILE', data);
+
+      RNFFprobe.getMediaInformation(data.uri).then((information) => {
+        setTimeout(() => {
+          console.log('Result: ' + information.duration);
+          this.setState({duration: information.duration / 1000});
+
+          RNVideoHelper.compress(
+            this.state.path,
+            {
+              startTime: this.state.duration-3, // optional, in seconds, defaults to 0
+              quality: 'low', // default low, can be medium or high
+              bitRate: 1.3 * 1000 * 1000, //default low:1.3M,medium:1.9M,high:2.6M
+              defaultOrientation: 0, // By default is 0, some devices not save this property in metadata. Can be between 0 - 360
+            },
+          )
+            .progress((value) => {
+              console.log('progress', value); // Int with progress value from 0 to 1
+            })
+            .then((data) => {
+              console.log('compressedUri', data); // String with path to temporary compressed video
+              this.state.croppedURL=data;
+              RNFFprobe.getMediaInformation(data).then((information) => {
+                setTimeout(() => {
+                  console.log("Compressed video duration:"+(information.duration/1000));
+                },1000)
+              })
+            });
+        }, 1000);
+      })
     }
   };
 
@@ -46,8 +80,14 @@ class Camera extends Component {
     if (this.state.recording === true) {
       setTimeout(() => {
         this.stopRecording();
-      }, 15000);
+      }, 60000);
     }
+    else{
+      setTimeout(() => {
+        this.takeVideo();
+      }, 500);
+    }
+
     return (
       <View style={styles.container}>
         <RNCamera

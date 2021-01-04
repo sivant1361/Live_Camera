@@ -5677,6 +5677,11 @@ react-native-camera@^3.40.0:
   dependencies:
     prop-types "^15.6.2"
 
+react-native-ffmpeg@0.4.3:
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/react-native-ffmpeg/-/react-native-ffmpeg-0.4.3.tgz#e4ef3247fd9b7fed0a2c5dfb59f057debba866e7"
+  integrity sha512-4XWNztckfeLbyy/YVjb8eHUOA+9gjGZiiXP9zRmpJuEeJNKoXFBmYjkY55mcFJaZuUscDhJPNMETG5nFwsUS8Q==
+
 react-native-vector-icons@^7.1.0:
   version "7.1.0"
   resolved "https://registry.yarnpkg.com/react-native-vector-icons/-/react-native-vector-icons-7.1.0.tgz#145487d617b2a81d395d2cf64e6e065fcab3a454"
@@ -5690,6 +5695,11 @@ react-native-vector-icons@^7.1.0:
     lodash.template "^4.5.0"
     prop-types "^15.7.2"
     yargs "^15.0.2"
+
+react-native-video-helper@^1.5.0:
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/react-native-video-helper/-/react-native-video-helper-1.5.0.tgz#0b3206318987c48b7d41f4522bb4974152c3dfb7"
+  integrity sha512-37wViz4kpxg7IYXwtuBtvr/A78JXXj7/fKgY6QMEo5QbGDVo8T6lhBLq22xXAYMilGE8/OGHhjMY00TaoFHiLA==
 
 react-native@0.63.4:
   version "0.63.4"
