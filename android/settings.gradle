@@ -1,4 +1,6 @@
 rootProject.name = 'livecam'
+include ':react-native-fs'
+project(':react-native-fs').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-fs/android')
 include ':react-native-video-helper'
 project(':react-native-video-helper').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-video-helper/android')
 include ':react-native-ffmpeg'

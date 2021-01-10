@@ -1,18 +1,14 @@
 import React from 'react';
-import {
-  SafeAreaView,
-  StyleSheet,
-  ScrollView,
-  View,
-  Text,
-  StatusBar,
-} from 'react-native';
+import {NavigationContainer, useTheme} from '@react-navigation/native';
 
-import Camera from './camera'
-import VideoCam from './videocam'
+import Camera from './camera';
+import VideoCam from './videocam';
+import NavStack from './navigationStack';
 
 export default function App() {
   return (
-    <Camera/>
+    <NavigationContainer>
+      <NavStack />
+    </NavigationContainer>
   );
-};
+}

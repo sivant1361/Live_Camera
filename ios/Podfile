@@ -12,6 +12,8 @@ target 'livecam' do
 
   pod 'react-native-video-helper', :path => '../node_modules/react-native-video-helper'
 
+  pod 'RNFS', :path => '../node_modules/react-native-fs'
+
   target 'livecamTests' do
     inherit! :complete
     # Pods for testing
