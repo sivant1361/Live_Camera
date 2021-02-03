@@ -1,10 +1,16 @@
 import React, {Component, useEffect} from 'react';
-import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Modal,
+  ActivityIndicator,
+} from 'react-native';
 import {RNCamera} from 'react-native-camera';
 import {RNFFprobe, RNFFmpeg} from 'react-native-ffmpeg';
 import RNVideoHelper from 'react-native-video-helper';
 import RNFS from 'react-native-fs';
-
 class Camera extends Component {
   constructor() {
     super();
@@ -15,8 +21,22 @@ class Camera extends Component {
       duration: 3,
       croppedURL: '',
       instantImage: '',
+      captureState: 'Capturing...',
       pressed: false,
+      modalLockOpen: false,
     };
+  }
+
+  componentDidMount() {
+    if (this.state.recording === true) {
+      setTimeout(() => {
+        this.stopRecording();
+      }, 60 * 1000);
+    } else {
+      setTimeout(() => {
+        this.takeVideo();
+      }, 500);
+    }
   }
 
   takePicture = async () => {
@@ -30,7 +50,7 @@ class Camera extends Component {
   stopRecording = async () => {
     console.log('Recording stopped');
     console.log('end start:' + new Date());
-    this.setState({pressed: true});
+    this.setState({modalLockOpen: true,pressed: true});
     setTimeout(() => {
       this.camera.stopRecording();
     }, 1500);
@@ -50,70 +70,77 @@ class Camera extends Component {
       console.log('record start:' + new Date());
       await this.camera
         .recordAsync(options)
-        .then((dat) => {
-          data = dat;
-          // console.log(dat);
+        .then((data) => {
+          // const data = await this.camera.recordAsync();
+          console.log('record terminate:' + new Date());
+          this.setState({path: data.uri});
+          // console.log('FILE', data);
+
+          this.setState({captureState: 'Compressing...'});
+          RNFFprobe.getMediaInformation(data.uri).then((information) => {
+            console.log('Result: ' + information.duration);
+            this.setState({duration: information.duration / 1000});
+
+            console.log('getting duration:' + new Date());
+
+            RNVideoHelper.compress(this.state.path, {
+              startTime: this.state.duration - 3, // optional, in seconds, defaults to 0
+              quality: 'high', // default low, can be medium or high
+              bitRate: 2.6 * 1000 * 1000, //default low:1.3M,medium:1.9M,high:2.6M
+              defaultOrientation: 0, // By default is 0, some devices not save this property in metadata. Can be between 0 - 360
+            })
+              .progress((value) => {
+                // console.log('progress', value); // Int with progress value from 0 to 1
+              })
+              .then((data) => {
+                console.log('After compression:' + new Date());
+                console.log('compressedUri', data); // String with path to temporary compressed video
+                this.setState({croppedURL: data});
+
+                // Delete recorded video
+                RNFS.exists(this.state.path).then((res) => {
+                  if (res) {
+                    // console.log(res);
+                    RNFS.unlink(this.state.path)
+                      .then((res) => console.log('FILE DELETED'))
+                      .catch((err) => console.log('File is not deleted'));
+                  }
+                });
+
+                console.log('After deleting long video:' + new Date());
+
+                this.setState({captureState: 'Generating Key Frames...'});
+
+                RNFFmpeg.execute(
+                  `-i ${this.state.croppedURL} -vf fps=10 ${RNFS.DocumentDirectoryPath}/out%03d.jpg`,
+                )
+                  .then((result) => {
+                    // setTimeout(() => {
+                    //   console.log('Compression' + result);
+                    // }, 2000);
+                    // console.log('Compression' + result);
+
+                    this.setState({
+                      pressed: false,
+                      recording: false,
+                      captureState: 'Capturing...',
+                      modalLockOpen: false,
+                    });
+                    console.log('After creating KeySlider:' + new Date());
+                    this.props.navigation.navigate('KeySlider', this.state);
+                  })
+                  .catch((error) => {
+                    console.log(error);
+                  });
+              });
+          });
         })
         .catch((err) => {
           console.log(err.message, err.code);
-          this.takeVideo()
+          this.camera.stopRecording();
+          this.takeVideo();
           return;
         });
-      // const data = await this.camera.recordAsync();
-      console.log('record terminate:' + new Date());
-      this.setState({path: data.uri});
-      // console.log('FILE', data);
-
-      RNFFprobe.getMediaInformation(data.uri).then((information) => {
-        console.log('Result: ' + information.duration);
-        this.setState({duration: information.duration / 1000});
-
-        console.log('getting duration:' + new Date());
-
-        RNVideoHelper.compress(this.state.path, {
-          startTime: this.state.duration - 3, // optional, in seconds, defaults to 0
-          quality: 'high', // default low, can be medium or high
-          bitRate: 2.6 * 1000 * 1000, //default low:1.3M,medium:1.9M,high:2.6M
-          defaultOrientation: 0, // By default is 0, some devices not save this property in metadata. Can be between 0 - 360
-        })
-          .progress((value) => {
-            // console.log('progress', value); // Int with progress value from 0 to 1
-          })
-          .then((data) => {
-            console.log('After compression:' + new Date());
-            console.log('compressedUri', data); // String with path to temporary compressed video
-            this.setState({croppedURL: data});
-
-            // Delete recorded video
-            RNFS.exists(this.state.path).then((res) => {
-              if (res) {
-                // console.log(res);
-                RNFS.unlink(this.state.path)
-                  .then((res) => console.log('FILE DELETED'))
-                  .catch((err) => console.log('File is not deleted'));
-              }
-            });
-
-            console.log('After deleting long video:' + new Date());
-
-            RNFFmpeg.execute(
-              `-i ${this.state.croppedURL} -vf fps=10 ${RNFS.DocumentDirectoryPath}/out%03d.jpg`,
-            )
-              .then((result) => {
-                // setTimeout(() => {
-                //   console.log('Compression' + result);
-                // }, 2000);
-                // console.log('Compression' + result);
-                
-                console.log('After creating KeySlider:' + new Date());
-
-                this.props.navigation.navigate('KeySlider', this.state);
-              })
-              .catch((error) => {
-                console.log(error);
-              });
-          });
-      });
     }
   };
 
@@ -170,20 +197,6 @@ class Camera extends Component {
   //   }
   // });
 
-  componentDidMount() {
-    // setTimeout(() => {
-    //   this.takeVideo();
-    // }, 1000);
-    if (this.state.recording === true) {
-      setTimeout(() => {
-        this.stopRecording();
-      }, 60000);
-    } else {
-      setTimeout(() => {
-        this.takeVideo();
-      }, 1000);
-    }
-  }
   render() {
     // RNFS.exists(RNFS.DocumentDirectoryPath).then((res) => {
     //           if (res) {
@@ -219,13 +232,53 @@ class Camera extends Component {
 
     return (
       <View style={styles.container}>
+        <Modal
+          visible={this.state.modalLockOpen}
+          animationType="slide"
+          transparent={true}>
+          <View
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.85)',
+              height: '100%',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 40,
+            }}>
+            <View style={{borderRadius: 8}}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-around',
+                    padding: 10,
+                  }}>
+                  <ActivityIndicator size="large" color="#fff" />
+                </View>
+                <Text
+                  style={{
+                    color: 'white',
+                    fontSize: 15,
+                    paddingHorizontal: 7,
+                  }}>
+                  {this.state.captureState}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </Modal>
         <RNCamera
           ref={(ref) => {
             this.camera = ref;
           }}
           style={styles.preview}
           type={RNCamera.Constants.Type.back}
-          flashMode={RNCamera.Constants.FlashMode.on}
+          // flashMode={RNCamera.Constants.FlashMode.on}
           captureAudio={false}
           androidCameraPermissionOptions={{
             title: 'Permission to use camera',
@@ -256,7 +309,9 @@ class Camera extends Component {
           {this.state.recording ? (
             !this.state.pressed ? (
               <TouchableOpacity
-                onPress={this.stopRecording}
+                onPress={() => {
+                  this.stopRecording();
+                }}
                 style={styles.capture}>
                 <Text style={{fontSize: 14, color: 'white'}}> Stop </Text>
               </TouchableOpacity>
@@ -268,8 +323,7 @@ class Camera extends Component {
                   padding: 20,
                   fontSize: 25,
                 }}>
-                {' '}
-                Capturing...{' '}
+                Capturing...
               </Text>
             )
           ) : (
