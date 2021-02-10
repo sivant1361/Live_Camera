@@ -11,6 +11,8 @@ import {RNCamera} from 'react-native-camera';
 import {RNFFprobe, RNFFmpeg} from 'react-native-ffmpeg';
 import RNVideoHelper from 'react-native-video-helper';
 import RNFS from 'react-native-fs';
+import TabView from './tabview';
+
 class Camera extends Component {
   constructor() {
     super();
@@ -24,20 +26,21 @@ class Camera extends Component {
       captureState: 'Capturing...',
       pressed: false,
       modalLockOpen: false,
+      force: false,
     };
   }
 
-  componentDidMount() {
-    if (this.state.recording === true) {
-      setTimeout(() => {
-        this.stopRecording();
-      }, 60 * 1000);
-    } else {
-      setTimeout(() => {
-        this.takeVideo();
-      }, 500);
-    }
-  }
+  // componentDidMount() {
+  //   if (this.state.recording === true) {
+  //     setTimeout(() => {
+  //       this.stopRecording();
+  //     }, 60 * 1000);
+  //   } else {
+  //     setTimeout(() => {
+  //       this.takeVideo();
+  //     }, 500);
+  //   }
+  // }
 
   takePicture = async () => {
     if (this.camera) {
@@ -47,10 +50,47 @@ class Camera extends Component {
     }
   };
 
+  forceStopRecording = () => {
+    console.log('Force Stop!');
+    this.setState({force: true});
+    this.camera.stopRecording();
+  };
+
+  getRecording = () => {
+    return this.state.recording;
+  };
+
+  captureVideo = async () => {
+    const fPath = `${RNFS.DocumentDirectoryPath}/live.mp4`;
+    const options = {
+      path: fPath,
+    };
+    console.log('record start: ' + new Date());
+    this.setState({recording: true});
+    await this.camera
+      .recordAsync(options)
+      .then((data) => {
+        console.log('Video Captured: ' + data);
+        console.log('record terminate: ' + new Date());
+        this.setState({modalLockOpen: true});
+        this.setState({captureState: 'Video Captured will show it later :)'});
+        setTimeout(() => {
+          this.setState({captureState: 'Video Captured will show it later :)'});
+          this.setState({modalLockOpen: false, CaptureState: 'Capturing...'});
+        }, 4000);
+      })
+      .catch((err) => {
+        console.log(err.message, err.code);
+        this.camera.stopRecording();
+        this.captureVideo();
+        return;
+      });
+  };
+
   stopRecording = async () => {
     console.log('Recording stopped');
     console.log('end start:' + new Date());
-    this.setState({modalLockOpen: true,pressed: true});
+    this.setState({modalLockOpen: true, pressed: true});
     setTimeout(() => {
       this.camera.stopRecording();
     }, 1500);
@@ -59,7 +99,6 @@ class Camera extends Component {
 
   takeVideo = async () => {
     const fPath = `${RNFS.DocumentDirectoryPath}/live.mp4`;
-    var data;
     // const fPath = `${RNFS.ExternalStorageDirectoryPath}/live.mp4`;
     if (this.camera) {
       this.setState({recording: true});
@@ -71,6 +110,10 @@ class Camera extends Component {
       await this.camera
         .recordAsync(options)
         .then((data) => {
+          if (this.state.force == true) {
+            this.setState({recording: false});
+            return;
+          }
           // const data = await this.camera.recordAsync();
           console.log('record terminate:' + new Date());
           this.setState({path: data.uri});
@@ -198,38 +241,6 @@ class Camera extends Component {
   // });
 
   render() {
-    // RNFS.exists(RNFS.DocumentDirectoryPath).then((res) => {
-    //           if (res) {
-    //             console.log(res);
-    //             RNFS.unlink(RNFS.DocumentDirectoryPath)
-    //               .then((res) => console.log('FILE DELETED'))
-    //               .catch((err) => console.log('File is not deleted'));
-    //           }
-    //         });
-
-    // RNFS.readDir(RNFS.DocumentDirectoryPath) // On Android, use "RNFS.DocumentDirectoryPath" (MainBundlePath is not defined)
-    //   .then((result) => {
-    //     console.log('GOT RESULT', result);
-
-    //     // stat the first file
-    //     return Promise.all([RNFS.stat(result[0].path), result[0].path]);
-    //   })
-    //   .then((statResult) => {
-    //     if (statResult[0].isFile()) {
-    //       // if we have a file, read it
-    //       return RNFS.readFile(statResult[1], 'utf8');
-    //     }
-
-    //     return 'no file';
-    //   })
-    //   .then((contents) => {
-    //     // log the file contents
-    //     console.log(contents);
-    //   })
-    //   .catch((err) => {
-    //     console.log(err.message, err.code);
-    //   });
-
     return (
       <View style={styles.container}>
         <Modal
@@ -299,14 +310,20 @@ class Camera extends Component {
 
         <View
           style={{
-            flex: 0,
             flexDirection: 'row',
             justifyContent: 'space-around',
           }}>
-          {/* <TouchableOpacity onPress={this.takePicture} style={styles.capture}>
-            <Text style={{fontSize: 14, color: 'white'}}> SNAP </Text>
-          </TouchableOpacity> */}
-          {this.state.recording ? (
+          <TabView
+            stopRecording={this.stopRecording}
+            recording={this.state.recording}
+            pressed={this.state.pressed}
+            takeVideo={this.takeVideo}
+            captureVideo={this.captureVideo}
+            forceStopRecording={this.forceStopRecording}
+            getRecording={this.getRecording}
+          />
+
+          {/* {this.state.recording ? (
             !this.state.pressed ? (
               <TouchableOpacity
                 onPress={() => {
@@ -330,7 +347,7 @@ class Camera extends Component {
             <TouchableOpacity onPress={this.takeVideo} style={styles.capture}>
               <Text style={{fontSize: 14, color: 'white'}}> Video </Text>
             </TouchableOpacity>
-          )}
+          )} */}
         </View>
       </View>
     );
@@ -344,9 +361,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
   },
   preview: {
-    flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
+    height: '80%',
   },
   capture: {
     flex: 0,
